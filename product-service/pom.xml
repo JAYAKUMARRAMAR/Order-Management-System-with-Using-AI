@@ -69,6 +69,14 @@
 			<artifactId>testcontainers-mongodb</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/io.rest-assured/rest-assured -->
+<dependency>
+    <groupId>io.rest-assured</groupId>
+    <artifactId>rest-assured</artifactId>
+    <version>6.0.0</version>
+    <scope>test</scope>
+</dependency>
+
 	</dependencies>
 
 	<build>
