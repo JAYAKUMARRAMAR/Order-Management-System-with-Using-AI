@@ -1,9 +1,7 @@
-CREATE TABLE 't_orders' 
-{
-    'id' bigint(20) NOT NULL AUTO_INCREMENT,
-    'order_number' VARCHAR(255) DEFAULT NULL,
-    'sku_code' VARCHAR(255),
-    'price' DECIMAL(10, 2),
-    'quantity' INT(11),
-    PRIMARY KEY ('id')
-};
+CREATE TABLE IF NOT EXISTS t_orders (
+	id BIGINT AUTO_INCREMENT PRIMARY KEY,
+	order_number VARCHAR(255) NOT NULL,
+	sku_code VARCHAR(255) NOT NULL,
+	price DECIMAL(10, 2) NOT NULL,
+	quantity INT NOT NULL
+);
