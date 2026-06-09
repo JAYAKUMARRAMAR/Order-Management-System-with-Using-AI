@@ -5,7 +5,6 @@ import com.techie.microservices.order_service.dto.OrderRequest;
 import com.techie.microservices.order_service.model.Order;
 import com.techie.microservices.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service; 
 
 import java.util.UUID;
