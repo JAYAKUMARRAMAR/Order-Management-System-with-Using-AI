@@ -6,6 +6,10 @@ import com.jayakumar.product.entity.Product;
 import com.jayakumar.product.exception.ProductNotFoundException;
 import com.jayakumar.product.repository.ProductRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
@@ -95,4 +99,24 @@ public class ProductServiceImpl implements ProductService {
                 product.getCategory()
         );
     }
+
+    @Override
+    public Page<ProductResponse> searchProducts(
+        String name,
+        int page,
+        int size,
+        String sortBy,
+        String direction) {
+
+    Sort sort = direction.equalsIgnoreCase("desc")
+            ? Sort.by(sortBy).descending()
+            : Sort.by(sortBy).ascending();
+
+    Pageable pageable =
+            PageRequest.of(page, size, sort);
+
+    return productRepository
+            .findByNameContainingIgnoreCase(name, pageable)
+            .map(this::mapToResponse);
+}
 }

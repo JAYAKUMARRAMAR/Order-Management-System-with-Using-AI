@@ -6,9 +6,16 @@ import com.jayakumar.product.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
+@Tag(
+    name = "Product Management",
+    description = "APIs for managing products"
+)
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
@@ -19,6 +26,10 @@ public class ProductController {
         this.productService = productService;
     }
 
+    @Operation(
+    summary = "Create a new product",
+    description = "Creates a product and stores it in MySQL"
+    )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProductResponse createProduct(
@@ -53,4 +64,34 @@ public class ProductController {
 
         productService.deleteProduct(id);
     }
+    
+    @Operation(
+    summary = "Search products",
+    description = "Search products with pagination and sorting"
+    )
+    @GetMapping("/search")
+    public Page<ProductResponse> searchProducts(
+
+        @RequestParam String name,
+
+        @RequestParam(defaultValue = "0")
+        int page,
+
+        @RequestParam(defaultValue = "10")
+        int size,
+
+        @RequestParam(defaultValue = "id")
+        String sortBy,
+
+        @RequestParam(defaultValue = "asc")
+        String direction) {
+
+    return productService.searchProducts(
+            name,
+            page,
+            size,
+            sortBy,
+            direction
+    );
+}
 }
