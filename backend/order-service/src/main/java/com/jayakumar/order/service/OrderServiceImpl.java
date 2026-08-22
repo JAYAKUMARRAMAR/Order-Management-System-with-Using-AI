@@ -1,9 +1,12 @@
 package com.jayakumar.order.service;
 
+import com.jayakumar.order.client.InventoryClient;
+import com.jayakumar.order.client.ProductClient;
 import com.jayakumar.order.dto.OrderItemRequest;
 import com.jayakumar.order.dto.OrderItemResponse;
 import com.jayakumar.order.dto.OrderRequest;
 import com.jayakumar.order.dto.OrderResponse;
+import com.jayakumar.order.dto.ProductResponse;
 import com.jayakumar.order.entity.Order;
 import com.jayakumar.order.entity.OrderItem;
 import com.jayakumar.order.entity.OrderStatus;
@@ -20,76 +23,89 @@ import java.util.List;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
+    private final ProductClient productClient;
+    private final InventoryClient inventoryClient;
 
-    public OrderServiceImpl(OrderRepository orderRepository) {
-        this.orderRepository = orderRepository;
+    public OrderServiceImpl(
+        OrderRepository orderRepository,
+        ProductClient productClient,
+        InventoryClient inventoryClient) {
+
+    this.orderRepository = orderRepository;
+    this.productClient = productClient;
+    this.inventoryClient = inventoryClient;
     }
 
     @Override
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
 
-        Order order = new Order();
+    Order order = new Order();
 
-        order.setCustomerId(request.getCustomerId());
-        order.setStatus(OrderStatus.PENDING);
-        order.setCreatedAt(LocalDateTime.now());
+    order.setCustomerId(request.getCustomerId());
+    order.setStatus(OrderStatus.PENDING);
+    order.setCreatedAt(LocalDateTime.now());
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
+    BigDecimal totalAmount = BigDecimal.ZERO;
 
-        for (OrderItemRequest itemRequest : request.getItems()) {
+    for (OrderItemRequest itemRequest : request.getItems()) {
 
-            /*
-             * Temporary price.
-             *
-             * In the next service-to-service
-             * communication step, price will be
-             * retrieved from Product Service.
-             */
-            BigDecimal price = BigDecimal.valueOf(100);
+        // 1. Get real product information
+        ProductResponse product =
+                productClient.getProductById(
+                        itemRequest.getProductId()
+                );
 
-            BigDecimal subtotal =
-                    price.multiply(
-                            BigDecimal.valueOf(
-                                    itemRequest.getQuantity()
-                            )
-                    );
+        // 2. Get actual product price
+        BigDecimal price = product.getPrice();
 
-            OrderItem orderItem = new OrderItem();
+        // 3. Reserve stock
+        inventoryClient.reserveStock(
+                itemRequest.getProductId(),
+                itemRequest.getQuantity()
+        );
 
-            orderItem.setProductId(
-                    itemRequest.getProductId());
+        // 4. Calculate subtotal
+        BigDecimal subtotal =
+                price.multiply(
+                        BigDecimal.valueOf(
+                                itemRequest.getQuantity()
+                        )
+                );
 
-            orderItem.setQuantity(
-                    itemRequest.getQuantity());
+        // 5. Create OrderItem
+        OrderItem orderItem = new OrderItem();
 
-            orderItem.setPrice(price);
+        orderItem.setProductId(
+                itemRequest.getProductId()
+        );
 
-            orderItem.setSubtotal(subtotal);
+        orderItem.setQuantity(
+                itemRequest.getQuantity()
+        );
 
-            orderItem.setOrder(order);
+        orderItem.setPrice(price);
 
-            order.getItems().add(orderItem);
+        orderItem.setSubtotal(subtotal);
 
-            totalAmount =
-                    totalAmount.add(subtotal);
-        }
+        orderItem.setOrder(order);
 
-        order.setTotalAmount(totalAmount);
+        order.getItems().add(orderItem);
 
-        /*
-         * For now, order is confirmed after
-         * basic order creation.
-         *
-         * Inventory reservation will be connected
-         * in the service-to-service communication step.
-         */
-        order.setStatus(OrderStatus.CONFIRMED);
+        // 6. Calculate total
+        totalAmount =
+                totalAmount.add(subtotal);
+    }
 
-        Order savedOrder =
-                orderRepository.save(order);
+    order.setTotalAmount(totalAmount);
 
-        return mapToResponse(savedOrder);
+    // 7. Order confirmed
+    order.setStatus(OrderStatus.CONFIRMED);
+
+    Order savedOrder =
+            orderRepository.save(order);
+
+    return mapToResponse(savedOrder);
     }
 
     @Override
