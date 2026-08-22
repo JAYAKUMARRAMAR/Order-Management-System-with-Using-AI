@@ -28,4 +28,22 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.NOT_FOUND)
                 .body(response);
     }
+    @ExceptionHandler(DownstreamServiceException.class)
+    public ResponseEntity<ErrorResponse> handleDownstreamService(
+        DownstreamServiceException ex,
+        HttpServletRequest request) {
+
+    ErrorResponse response =
+            new ErrorResponse(
+                    LocalDateTime.now(),
+                    503,
+                    "Service Unavailable",
+                    ex.getMessage(),
+                    request.getRequestURI()
+            );
+
+    return ResponseEntity
+            .status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(response);
+}
 }
