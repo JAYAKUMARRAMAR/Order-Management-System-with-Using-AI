@@ -38,6 +38,18 @@ spring:
               uri: ${ORDER_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/orders/**
+            
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8090}
+              predicates:
+                - Path=/auth/**
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret-key: ${JWT_SECRET:my-super-secret-key-for-jwt-authentication-2026}
+
 
 server:
   port: 8080
