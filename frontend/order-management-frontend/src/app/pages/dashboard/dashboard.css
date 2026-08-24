@@ -1,0 +1,52 @@
+.dashboard {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(42px, 8vw, 92px) 24px;
+}
+
+.dashboard h1 {
+  max-width: 660px;
+  margin: 0 auto 14px;
+  color: var(--navy);
+  font-family: Georgia, serif;
+  font-size: clamp(38px, 6vw, 64px);
+  line-height: 1.04;
+}
+
+.dashboard > p {
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.dashboard strong {
+  color: var(--teal);
+}
+
+.menu {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 52px;
+}
+
+.menu a {
+  min-width: 170px;
+  padding: 22px 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: white;
+  text-decoration: none;
+  color: var(--navy);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  font-weight: 700;
+  transition: transform 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.menu a:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  transform: translateY(-3px);
+}

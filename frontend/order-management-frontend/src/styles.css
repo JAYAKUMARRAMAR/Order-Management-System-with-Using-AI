@@ -1,0 +1,38 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #14213d;
+  --muted: #667085;
+  --navy: #14213d;
+  --teal: #0f766e;
+  --teal-soft: #dff5f0;
+  --coral: #e76f51;
+  --surface: #ffffff;
+  --line: #e5e7eb;
+  --page: #f6f8fb;
+  --shadow: 0 16px 40px rgba(20, 33, 61, 0.08);
+}
+
+body {
+  margin: 0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(231, 111, 81, 0.1), transparent 28rem),
+    linear-gradient(135deg, #f8fafc 0%, var(--page) 52%, #eef7f5 100%);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgba(231, 111, 81, 0.45);
+  outline-offset: 3px;
+}

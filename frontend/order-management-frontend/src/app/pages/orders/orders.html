@@ -1,0 +1,33 @@
+<div class="page">
+  <h1>Orders</h1>
+  <p *ngIf="loading">
+    Loading orders...
+  </p>
+  <p class="error" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </p>
+
+  <table *ngIf="!loading && orders.length > 0">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Product ID</th>
+        <th>Quantity</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let order of orders">
+        <td> {{ order.id }} </td>
+        <td> {{ order.productId }} </td>
+        <td> {{ order.quantity }} </td>
+        <td> {{ order.status }} </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p *ngIf="!loading && orders.length === 0">
+    No orders found.
+  </p>
+
+</div>
