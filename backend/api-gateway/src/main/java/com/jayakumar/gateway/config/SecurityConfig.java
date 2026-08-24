@@ -39,44 +39,41 @@ public class SecurityConfig {
                 //.csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .csrf(csrf -> csrf.disable())
 
-                // Configure authorization
-                .authorizeExchange(exchange -> exchange
+                   .cors(cors -> {})
 
-                        // Public authentication APIs
-                        .pathMatchers(
-                                "/auth/**"
-                        ).permitAll()
+    .authorizeExchange(exchange -> exchange
 
-                        // Public product APIs
-                        .pathMatchers(
-                                HttpMethod.GET,
-                                "/api/products/**"
-                        ).permitAll()
+        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Health check
-                        .pathMatchers(
-                                "/actuator/health"
-                        ).permitAll()
+        .pathMatchers(
+            "/auth/**"
+        ).permitAll()
 
-                        // Inventory requires authentication
-                        .pathMatchers(
-                                "/api/inventory/**"
-                        ).authenticated()
+        .pathMatchers(
+            HttpMethod.GET,
+            "/api/products/**"
+        ).permitAll()
 
-                        // Orders require authentication
-                        .pathMatchers(
-                                "/api/orders/**"
-                        ).authenticated()
+        .pathMatchers(
+            "/actuator/health"
+        ).permitAll()
 
-                        // Everything else requires authentication
-                        .anyExchange().authenticated()
-                )
+        .pathMatchers(
+            "/api/inventory/**"
+        ).authenticated()
 
-                // JWT validation
-                .oauth2ResourceServer(
-                        oauth2 -> oauth2.jwt(jwt -> {})
-                )
+        .pathMatchers(
+            "/api/orders/**"
+        ).authenticated()
 
-                .build();
+        .anyExchange().authenticated()
+    )
+
+    .oauth2ResourceServer(
+        oauth2 -> oauth2.jwt(jwt -> {})
+    )
+
+    .build();
+
     }
 }
