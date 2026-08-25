@@ -153,6 +153,7 @@ public class OrderServiceImpl implements OrderService {
                         .stream()
                         .map(item ->
                                 new OrderItemResponse(
+                                        item.getId(),
                                         item.getProductId(),
                                         item.getQuantity(),
                                         item.getPrice(),

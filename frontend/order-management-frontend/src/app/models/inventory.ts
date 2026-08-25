@@ -1,13 +1,6 @@
 export interface Inventory {
-  id: number;
+  id: string;
   productId: number;
-  quantity: number;
+  availableQuantity: number;
+  reservedQuantity: number;
 }
-
-// export interface Inventory {
-//   id: string;
-//   productId: number;
-//   availableQuantity: number;
-//   reservedQuantity: number;
-
-// }

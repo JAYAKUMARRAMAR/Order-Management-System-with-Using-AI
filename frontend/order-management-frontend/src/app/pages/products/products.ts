@@ -1,47 +1,66 @@
-import { Component, DestroyRef, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { ProductService } from '../../core/services/product';
 import { Product } from '../../models/product';
 
 @Component({
-
   selector: 'app-products',
   standalone: true,
-  imports: [ CommonModule ],
+  imports: [CommonModule],
   templateUrl: './products.html',
   styleUrl: './products.css'
 })
-export class ProductsComponent
-  implements OnInit {
+export class ProductsComponent implements OnInit {
 
   products: Product[] = [];
-  loading = false;
+
+  loading = true;
+
   errorMessage = '';
 
   constructor(
-    private productService: ProductService,
-    private destroyRef: DestroyRef
+    private productService: ProductService
   ) {}
 
-  ngOnInit(): void { this.loadProducts(); }
+  ngOnInit(): void {
+    console.log('ProductsComponent initialized');
+
+    this.loadProducts();
+  }
 
   loadProducts(): void {
+
     this.loading = true;
-    this.productService
-      .getProducts()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data: Product[]) => {
-          this.products = data;
-          this.loading = false;
-        },
-        error: (error: any) => {
-          console.error(error);
-          this.errorMessage =
-            'Unable to load products';
-          this.loading = false;
-        }
-      });
+
+    this.productService.getProducts().subscribe({
+
+      next: (response) => {
+
+        console.log('PRODUCT API RESPONSE:', response);
+
+        this.products = response.content ?? [];
+
+        console.log('PRODUCTS:', this.products);
+
+        this.loading = false;
+      },
+
+      error: (error) => {
+
+        console.error('PRODUCT API ERROR:', error);
+
+        this.errorMessage =
+          'Unable to load products.';
+
+        this.loading = false;
+      }
+      ,complete: () => {
+
+        console.log('Product API request completed');
+
+        this.loading = false;
+      }
+    });
   }
 }

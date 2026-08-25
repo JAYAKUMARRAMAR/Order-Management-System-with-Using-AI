@@ -11,7 +11,8 @@
       <tr>
         <th>ID</th>
         <th>Product ID</th>
-        <th>Quantity</th>
+        <th>Available Quantity</th>
+        <th>Reserved Quantity</th>
       </tr>
     </thead>
 
@@ -19,7 +20,8 @@
       <tr *ngFor="let item of inventory">
         <td> {{ item.id }} </td>
         <td> {{ item.productId }} </td>
-        <td> {{ item.quantity }} </td>
+        <td> {{ item.availableQuantity }} </td>
+        <td> {{ item.reservedQuantity }} </td>
       </tr>
     </tbody>
   </table>

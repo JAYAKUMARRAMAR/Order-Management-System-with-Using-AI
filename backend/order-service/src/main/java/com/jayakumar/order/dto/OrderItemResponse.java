@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class OrderItemResponse {
 
+    private Long itemId;
+
     private Long productId;
 
     private Integer quantity;
