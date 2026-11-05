@@ -15,3 +15,7 @@ export interface OrderItem {
   subtotal: number;
 }
 
+export interface CreateOrderRequest {
+  customerId: number;
+  items: Pick<OrderItem, 'productId' | 'quantity'>[];
+}

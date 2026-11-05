@@ -21,7 +21,7 @@ spring:
                 allowCredentials: true
           httpclient:
             connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:2000}
-            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:5s}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:15s}
 
           routes:
             - id: product-service

@@ -1,31 +1,101 @@
 <div class="page">
-  <h1>Products</h1>
-  <p *ngIf="loading"> Loading products...</p>
-  <p class="error" *ngIf="errorMessage">
-    {{ errorMessage }}
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Explore our collection</p>
+      <h1>Products</h1>
+      <p class="page-intro">Choose a product to see the details and place an order.</p>
+    </div>
+    <span class="product-count" *ngIf="!loading">
+      {{ products.length }} {{ products.length === 1 ? 'product' : 'products' }}
+    </span>
+  </header>
+
+  <p class="loading" *ngIf="loading">Loading products...</p>
+  <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <p class="success" *ngIf="successMessage" role="status">
+    {{ successMessage }}
   </p>
 
-  <table *ngIf="!loading && products.length > 0">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Price</th>
-      </tr>
-    </thead>
+  <section class="product-grid" *ngIf="!loading && products.length > 0" aria-label="Products">
+    <article class="product-card" *ngFor="let product of products">
+      <button
+        class="product-photo-button"
+        type="button"
+        (click)="showDetails(product)"
+        [attr.aria-label]="'View details for ' + product.name">
+        <img
+          class="product-photo"
+          [src]="product.imageUrl || fallbackImageUrl"
+          [alt]="product.name"
+          loading="lazy">
+        <span class="photo-hint">View details</span>
+      </button>
+      <div class="product-info">
+        <p class="product-id">Product #{{ product.id }}</p>
+        <h2>{{ product.name }}</h2>
+        <p class="product-description">{{ product.description || 'Product details available on request.' }}</p>
+        <div class="product-card-footer">
+          <strong class="price">{{ product.price | currency }}</strong>
+          <button class="details-button" type="button" (click)="showDetails(product)">
+            Details
+          </button>
+        </div>
+      </div>
+    </article>
+  </section>
 
-    <tbody>
-      <tr *ngFor="let product of products">
-        <td> {{ product.id }} </td>
-        <td> {{ product.name }} </td>
-        <td> {{ product.description }} </td>
-        <td> {{ product.price }} </td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p *ngIf="!loading && products.length === 0">
+  <p class="empty-state" *ngIf="!loading && !errorMessage && products.length === 0">
     No products found.
   </p>
+</div>
+
+<div
+  class="modal-backdrop"
+  *ngIf="selectedProduct as product"
+  (click)="closeDetails()"
+  (keydown.escape)="closeDetails()">
+  <section
+    class="product-dialog"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="product.name + ' details'"
+    (click)="$event.stopPropagation()">
+    <button
+      class="close-button"
+      type="button"
+      aria-label="Close product details"
+      [disabled]="ordering"
+      (click)="closeDetails()">×</button>
+    <img
+      class="dialog-photo"
+      [src]="product.imageUrl || fallbackImageUrl"
+      [alt]="product.name">
+    <div class="dialog-content">
+      <p class="eyebrow">Product #{{ product.id }}</p>
+      <h2>{{ product.name }}</h2>
+      <p class="dialog-description">
+        {{ product.description || 'Product details available on request.' }}
+      </p>
+      <p class="dialog-price">{{ product.price | currency }}</p>
+
+      <label class="quantity-label" for="order-quantity">Quantity</label>
+      <input
+        id="order-quantity"
+        type="number"
+        min="1"
+        step="1"
+        [(ngModel)]="quantity"
+        [disabled]="ordering">
+      <p class="error order-error" *ngIf="orderError" role="alert">
+        {{ orderError }}
+      </p>
+      <button
+        class="order-button"
+        type="button"
+        [disabled]="ordering || !quantity || quantity < 1 || quantity % 1 !== 0"
+        (click)="placeOrder()">
+        {{ ordering ? 'Placing order...' : 'Place order' }}
+      </button>
+    </div>
+  </section>
 </div>
