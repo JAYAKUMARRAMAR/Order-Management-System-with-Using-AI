@@ -4,6 +4,7 @@ import com.jayakumar.notification.dto.CreateNotificationRequest;
 import com.jayakumar.notification.dto.NotificationResponse;
 import com.jayakumar.notification.entity.DeliveryStatus;
 import com.jayakumar.notification.entity.Notification;
+import com.jayakumar.notification.exception.EmailDeliveryException;
 import com.jayakumar.notification.exception.NotificationNotFoundException;
 import com.jayakumar.notification.repository.NotificationRepository;
 import org.springframework.dao.DuplicateKeyException;
@@ -17,9 +18,13 @@ import java.util.UUID;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final EmailService emailService;
 
-    public NotificationServiceImpl(NotificationRepository notificationRepository) {
+    public NotificationServiceImpl(
+            NotificationRepository notificationRepository,
+            EmailService emailService) {
         this.notificationRepository = notificationRepository;
+        this.emailService = emailService;
     }
 
     @Override
@@ -45,12 +50,23 @@ public class NotificationServiceImpl implements NotificationService {
                 null);
 
         try {
-            return toResponse(notificationRepository.save(notification));
+            notification = notificationRepository.save(notification);
         } catch (DuplicateKeyException exception) {
             return notificationRepository.findByEventId(eventId)
                     .map(this::toResponse)
                     .orElseThrow(() -> exception);
         }
+
+        try {
+            emailService.sendOrderNotification(notification);
+            notification.setDeliveryStatus(DeliveryStatus.SENT);
+            notification.setFailureReason(null);
+        } catch (EmailDeliveryException exception) {
+            notification.setDeliveryStatus(DeliveryStatus.FAILED);
+            notification.setFailureReason(exception.getMessage());
+        }
+        notification.setUpdatedAt(LocalDateTime.now());
+        return toResponse(notificationRepository.save(notification));
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.jayakumar.notification.dto.NotificationResponse;
 import com.jayakumar.notification.entity.DeliveryStatus;
 import com.jayakumar.notification.entity.Notification;
 import com.jayakumar.notification.entity.NotificationType;
+import com.jayakumar.notification.exception.EmailDeliveryException;
 import com.jayakumar.notification.exception.NotificationNotFoundException;
 import com.jayakumar.notification.repository.NotificationRepository;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,11 +35,14 @@ class NotificationServiceImplTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private NotificationServiceImpl notificationService;
 
     @Test
-    void createNotificationPersistsPendingNotificationWithoutExposingRecipient() {
+    void createNotificationSendsEmailAndPersistsSentStatus() {
         CreateNotificationRequest request = new CreateNotificationRequest(
                 "event-1",
                 42L,
@@ -51,14 +56,40 @@ class NotificationServiceImplTest {
         NotificationResponse response = notificationService.createNotification(request);
 
         ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
-        verify(notificationRepository).save(notificationCaptor.capture());
-        Notification savedNotification = notificationCaptor.getValue();
-        assertEquals(DeliveryStatus.PENDING, savedNotification.getDeliveryStatus());
+        verify(notificationRepository, org.mockito.Mockito.times(2)).save(notificationCaptor.capture());
+        Notification savedNotification = notificationCaptor.getAllValues().get(0);
+        assertEquals(DeliveryStatus.SENT, savedNotification.getDeliveryStatus());
         assertEquals("customer@example.com", savedNotification.getRecipientEmail());
         assertNotNull(savedNotification.getCreatedAt());
-        assertEquals(savedNotification.getCreatedAt(), savedNotification.getUpdatedAt());
-        assertEquals(DeliveryStatus.PENDING, response.deliveryStatus());
+        assertNotNull(savedNotification.getUpdatedAt());
+        assertFalse(savedNotification.getUpdatedAt().isBefore(savedNotification.getCreatedAt()));
+        assertEquals(DeliveryStatus.SENT, response.deliveryStatus());
         assertEquals("event-1", response.eventId());
+        verify(emailService).sendOrderNotification(savedNotification);
+    }
+
+    @Test
+    void createNotificationMarksDeliveryFailedWhenEmailSendingFails() {
+        CreateNotificationRequest request = new CreateNotificationRequest(
+                "event-2",
+                43L,
+                7L,
+                NotificationType.ORDER_CANCELLED,
+                "customer@example.com");
+        when(notificationRepository.findByEventId("event-2")).thenReturn(Optional.empty());
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        org.mockito.Mockito.doThrow(new EmailDeliveryException("Email delivery failed (MailSendException)"))
+                .when(emailService).sendOrderNotification(any(Notification.class));
+
+        NotificationResponse response = notificationService.createNotification(request);
+
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository, org.mockito.Mockito.times(2)).save(notificationCaptor.capture());
+        Notification persistedNotification = notificationCaptor.getAllValues().get(1);
+        assertEquals(DeliveryStatus.FAILED, persistedNotification.getDeliveryStatus());
+        assertEquals("Email delivery failed (MailSendException)", persistedNotification.getFailureReason());
+        assertEquals(DeliveryStatus.FAILED, response.deliveryStatus());
     }
 
     @Test
@@ -78,6 +109,7 @@ class NotificationServiceImplTest {
 
         assertEquals("notification-1", response.notificationId());
         verify(notificationRepository, never()).save(any(Notification.class));
+        verify(emailService, never()).sendOrderNotification(any(Notification.class));
     }
 
     @Test
@@ -99,6 +131,7 @@ class NotificationServiceImplTest {
 
         assertEquals("notification-1", response.notificationId());
         verify(notificationRepository).save(any(Notification.class));
+        verify(emailService, never()).sendOrderNotification(any(Notification.class));
     }
 
     @Test
