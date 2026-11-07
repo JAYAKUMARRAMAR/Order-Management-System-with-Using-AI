@@ -27,7 +27,9 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.security.MessageDigest;
 import java.util.Date;
+import java.util.HexFormat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -93,7 +95,8 @@ class AuthControllerTests {
                 .andExpect(jsonPath("$.username").value("newcustomer"))
                 .andExpect(jsonPath("$.email").value("newcustomer@example.test"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist())
-                .andExpect(jsonPath("$.password").doesNotExist());
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.verificationToken").doesNotExist());
     }
 
     @Test
@@ -142,10 +145,13 @@ class AuthControllerTests {
         CustomerProfile pendingProfile = customerProfileRepository.findByUsername("verify-user")
                 .orElseThrow();
         assertFalse(pendingProfile.isEmailVerified());
+        assertEquals(sha256(verificationToken), pendingProfile.getEmailVerificationTokenHash());
         assertNotEquals(verificationToken, pendingProfile.getEmailVerificationTokenHash());
         assertEquals(64, pendingProfile.getEmailVerificationTokenHash().length());
-        assertTrue(pendingProfile.getEmailVerificationTokenExpiresAt().isAfter(
-                java.time.LocalDateTime.now()));
+        java.time.LocalDateTime expiration = pendingProfile.getEmailVerificationTokenExpiresAt();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        assertTrue(expiration.isAfter(now.plusHours(24).minusMinutes(1)));
+        assertTrue(expiration.isBefore(now.plusHours(24).plusMinutes(1)));
 
         mockMvc.perform(get("/auth/verify-email").param("token", verificationToken))
                 .andExpect(status().isOk())
@@ -199,6 +205,14 @@ class AuthControllerTests {
     @Test
     void rejectsUnknownEmailVerificationToken() throws Exception {
         mockMvc.perform(get("/auth/verify-email").param("token", "not-a-valid-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Invalid or expired email verification token"));
+    }
+
+    @Test
+    void rejectsBlankEmailVerificationToken() throws Exception {
+        mockMvc.perform(get("/auth/verify-email").param("token", " "))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value("Invalid or expired email verification token"));
@@ -357,6 +371,12 @@ class AuthControllerTests {
                         StandardCharsets.UTF_8))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private static String sha256(String token) throws Exception {
+        byte[] digest = MessageDigest.getInstance("SHA-256")
+                .digest(token.getBytes(StandardCharsets.UTF_8));
+        return HexFormat.of().formatHex(digest);
     }
 
     private void createVerifiedProfile(String username, String email, String password) {

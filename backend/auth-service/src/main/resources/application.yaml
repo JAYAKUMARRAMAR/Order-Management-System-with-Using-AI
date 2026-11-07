@@ -28,3 +28,7 @@ auth:
   email-verification:
     url: ${EMAIL_VERIFICATION_URL:http://localhost:8090/auth/verify-email}
     expiration: ${EMAIL_VERIFICATION_EXPIRATION:86400000}
+
+internal:
+  api:
+    token: ${INTERNAL_API_TOKEN:}

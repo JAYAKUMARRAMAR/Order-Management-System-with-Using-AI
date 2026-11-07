@@ -1,6 +1,7 @@
 package com.jayakumar.auth.controller;
 
 import com.jayakumar.auth.dto.AuthErrorResponse;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,6 +14,13 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<AuthErrorResponse> handleValidationFailure(
             MethodArgumentNotValidException exception) {
+        return ResponseEntity.badRequest()
+                .body(new AuthErrorResponse("Invalid request"));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<AuthErrorResponse> handleConstraintViolation(
+            ConstraintViolationException exception) {
         return ResponseEntity.badRequest()
                 .body(new AuthErrorResponse("Invalid request"));
     }
