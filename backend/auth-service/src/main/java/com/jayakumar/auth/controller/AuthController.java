@@ -80,7 +80,7 @@ public class AuthController {
             return loginFailure();
         }
 
-        String token = jwtService.generateToken(profile.getUsername());
+        String token = jwtService.generateToken(profile.getUsername(), profile.getCustomerId());
         return ResponseEntity.ok(new LoginResponse(token, profile.getUsername()));
     }
 

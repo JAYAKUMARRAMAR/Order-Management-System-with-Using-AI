@@ -28,7 +28,7 @@ public class JwtService {
         this.expiration = expiration;
     }
 
-    public String generateToken(String username) {
+    public String generateToken(String username, Long customerId) {
 
         Date now = new Date();
 
@@ -39,6 +39,8 @@ public class JwtService {
         return Jwts.builder()
 
                 .subject(username)
+
+                .claim("customerId", customerId)
 
                 .issuedAt(now)
 
