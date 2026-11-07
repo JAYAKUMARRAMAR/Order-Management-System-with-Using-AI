@@ -7,6 +7,10 @@ import java.util.Optional;
 
 public interface CustomerProfileRepository extends JpaRepository<CustomerProfile, Long> {
 
+    boolean existsByUsername(String username);
+
+    boolean existsByEmail(String email);
+
     Optional<CustomerProfile> findByUsername(String username);
 
     Optional<CustomerProfile> findByEmail(String email);
