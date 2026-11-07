@@ -1,6 +1,7 @@
 package com.jayakumar.auth.controller;
 
 import com.jayakumar.auth.dto.AuthErrorResponse;
+import com.jayakumar.auth.dto.EmailVerificationResponse;
 import com.jayakumar.auth.dto.LoginRequest;
 import com.jayakumar.auth.dto.LoginResponse;
 import com.jayakumar.auth.dto.RegistrationRequest;
@@ -8,6 +9,7 @@ import com.jayakumar.auth.dto.RegistrationResponse;
 import com.jayakumar.auth.entity.CustomerProfile;
 import com.jayakumar.auth.repository.CustomerProfileRepository;
 import com.jayakumar.auth.service.JwtService;
+import com.jayakumar.auth.service.EmailVerificationService;
 import jakarta.validation.Valid;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -24,14 +26,17 @@ public class AuthController {
     private final JwtService jwtService;
     private final CustomerProfileRepository customerProfileRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthController(
             JwtService jwtService,
             CustomerProfileRepository customerProfileRepository,
-            BCryptPasswordEncoder passwordEncoder) {
+            BCryptPasswordEncoder passwordEncoder,
+            EmailVerificationService emailVerificationService) {
         this.jwtService = jwtService;
         this.customerProfileRepository = customerProfileRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @PostMapping("/register")
@@ -51,9 +56,13 @@ public class AuthController {
                 request.email(),
                 passwordEncoder.encode(request.password())
         );
+        String verificationToken = emailVerificationService.issueToken(profile);
 
         try {
             CustomerProfile savedProfile = customerProfileRepository.saveAndFlush(profile);
+            emailVerificationService.sendVerificationEmail(
+                    savedProfile.getEmail(),
+                    verificationToken);
             return ResponseEntity.status(HttpStatus.CREATED).body(
                     new RegistrationResponse(
                             savedProfile.getCustomerId(),
@@ -64,6 +73,15 @@ public class AuthController {
         } catch (DataIntegrityViolationException exception) {
             return registrationConflict();
         }
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        if (!emailVerificationService.verifyToken(token)) {
+            return ResponseEntity.badRequest()
+                    .body(new AuthErrorResponse("Invalid or expired email verification token"));
+        }
+        return ResponseEntity.ok(new EmailVerificationResponse("Email verified successfully"));
     }
 
     @PostMapping("/login")

@@ -13,6 +13,7 @@ import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -50,6 +51,32 @@ public class EmailServiceImpl implements EmailService {
             throw new EmailDeliveryException(
                     "Email delivery failed (" + exception.getClass().getSimpleName() + ")");
         } catch (MessagingException | IOException exception) {
+            throw new EmailDeliveryException(
+                    "Email preparation failed (" + exception.getClass().getSimpleName() + ")");
+        }
+    }
+
+    @Override
+    public void sendEmailVerification(String recipientEmail, String verificationUrl) {
+        validateRecipient(recipientEmail);
+        String html = """
+                <html><body>
+                <p>Please verify your email address by clicking the link below.</p>
+                <p><a href="%s">Verify email address</a></p>
+                </body></html>
+                """.formatted(HtmlUtils.htmlEscape(verificationUrl));
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
+            helper.setFrom(senderAddress);
+            helper.setTo(recipientEmail);
+            helper.setSubject("Verify your email address");
+            helper.setText(html, true);
+            mailSender.send(message);
+        } catch (MailException exception) {
+            throw new EmailDeliveryException(
+                    "Email delivery failed (" + exception.getClass().getSimpleName() + ")");
+        } catch (MessagingException exception) {
             throw new EmailDeliveryException(
                     "Email preparation failed (" + exception.getClass().getSimpleName() + ")");
         }

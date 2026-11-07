@@ -19,3 +19,12 @@ spring:
 jwt:
   secret: ${JWT_SECRET:my-super-secret-key-for-jwt-authentication-2026}
   expiration: 3600000
+
+notification:
+  service:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+
+auth:
+  email-verification:
+    url: ${EMAIL_VERIFICATION_URL:http://localhost:8090/auth/verify-email}
+    expiration: ${EMAIL_VERIFICATION_EXPIRATION:86400000}

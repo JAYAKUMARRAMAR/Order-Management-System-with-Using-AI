@@ -39,6 +39,12 @@ public class CustomerProfile {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
+    @Column(name = "email_verification_token_hash", length = 64)
+    private String emailVerificationTokenHash;
+
+    @Column(name = "email_verification_token_expires_at")
+    private LocalDateTime emailVerificationTokenExpiresAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -84,6 +90,19 @@ public class CustomerProfile {
 
     public boolean isEmailVerified() {
         return emailVerified;
+    }
+
+    public String getEmailVerificationTokenHash() {
+        return emailVerificationTokenHash;
+    }
+
+    public LocalDateTime getEmailVerificationTokenExpiresAt() {
+        return emailVerificationTokenExpiresAt;
+    }
+
+    public void setEmailVerificationToken(String tokenHash, LocalDateTime expiresAt) {
+        this.emailVerificationTokenHash = tokenHash;
+        this.emailVerificationTokenExpiresAt = expiresAt;
     }
 
     public LocalDateTime getCreatedAt() {

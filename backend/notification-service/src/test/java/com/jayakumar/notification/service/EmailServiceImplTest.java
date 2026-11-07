@@ -88,6 +88,25 @@ class EmailServiceImplTest {
         verify(mailSender, never()).createMimeMessage();
     }
 
+    @Test
+    void sendEmailVerificationBuildsAndSendsVerificationLink() throws Exception {
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+
+        emailService.sendEmailVerification(
+                "customer@example.com",
+                "https://example.test/verify?token=abc&source=registration");
+
+        ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(messageCaptor.capture());
+        MimeMessage sentMessage = messageCaptor.getValue();
+        assertEquals("Verify your email address", sentMessage.getSubject());
+        assertEquals("orders@example.com", sentMessage.getFrom()[0].toString());
+        assertEquals("customer@example.com", sentMessage.getAllRecipients()[0].toString());
+        assertTrue(sentMessage.getContent().toString().contains(
+                "href=\"https://example.test/verify?token=abc&amp;source=registration\""));
+    }
+
     private Notification notification(NotificationType type, String recipientEmail) {
         LocalDateTime now = LocalDateTime.now();
         return new Notification(

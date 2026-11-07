@@ -2,6 +2,7 @@ package com.jayakumar.auth.controller;
 
 import com.jayakumar.auth.entity.CustomerProfile;
 import com.jayakumar.auth.repository.CustomerProfileRepository;
+import com.jayakumar.auth.service.EmailVerificationNotificationClient;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -18,19 +19,30 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.mockito.ArgumentCaptor;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.net.URI;
+import java.net.URLDecoder;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -48,6 +60,9 @@ class AuthControllerTests {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @MockitoBean
+    private EmailVerificationNotificationClient notificationClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -112,6 +127,81 @@ class AuthControllerTests {
         org.junit.jupiter.api.Assertions.assertTrue(
                 passwordEncoder.matches("correct-password", profile.getPasswordHash()));
         org.junit.jupiter.api.Assertions.assertFalse(profile.isEmailVerified());
+    }
+
+    @Test
+    void registersVerifiesEmailAndAllowsLoginWithoutChangingJwtShape() throws Exception {
+        register("verify-user", "verify@example.test");
+
+        ArgumentCaptor<String> verificationUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(notificationClient).sendVerificationEmail(
+                eq("verify@example.test"),
+                verificationUrlCaptor.capture());
+        String verificationToken = tokenFromUrl(verificationUrlCaptor.getValue());
+
+        CustomerProfile pendingProfile = customerProfileRepository.findByUsername("verify-user")
+                .orElseThrow();
+        assertFalse(pendingProfile.isEmailVerified());
+        assertNotEquals(verificationToken, pendingProfile.getEmailVerificationTokenHash());
+        assertEquals(64, pendingProfile.getEmailVerificationTokenHash().length());
+        assertTrue(pendingProfile.getEmailVerificationTokenExpiresAt().isAfter(
+                java.time.LocalDateTime.now()));
+
+        mockMvc.perform(get("/auth/verify-email").param("token", verificationToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Email verified successfully"));
+
+        CustomerProfile verifiedProfile = customerProfileRepository.findByUsername("verify-user")
+                .orElseThrow();
+        assertTrue(verifiedProfile.isEmailVerified());
+        assertNull(verifiedProfile.getEmailVerificationTokenHash());
+        assertNull(verifiedProfile.getEmailVerificationTokenExpiresAt());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson("verify-user", "correct-password")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value(not(isEmptyOrNullString())))
+                .andExpect(jsonPath("$.username").value("verify-user"))
+                .andExpect(jsonPath("$.customerId").doesNotExist());
+    }
+
+    @Test
+    void rejectsExpiredEmailVerificationToken() throws Exception {
+        register("expired-user", "expired@example.test");
+        String token = verificationTokenSentTo("expired@example.test");
+        jdbcTemplate.update(
+                "UPDATE customer_profiles SET email_verification_token_expires_at = ? WHERE username = ?",
+                java.sql.Timestamp.valueOf(java.time.LocalDateTime.now().minusMinutes(1)),
+                "expired-user");
+
+        mockMvc.perform(get("/auth/verify-email").param("token", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Invalid or expired email verification token"));
+        assertFalse(customerProfileRepository.findByUsername("expired-user")
+                .orElseThrow().isEmailVerified());
+    }
+
+    @Test
+    void rejectsReusedEmailVerificationToken() throws Exception {
+        register("reused-user", "reused@example.test");
+        String token = verificationTokenSentTo("reused@example.test");
+
+        mockMvc.perform(get("/auth/verify-email").param("token", token))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/auth/verify-email").param("token", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Invalid or expired email verification token"));
+    }
+
+    @Test
+    void rejectsUnknownEmailVerificationToken() throws Exception {
+        mockMvc.perform(get("/auth/verify-email").param("token", "not-a-valid-token"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("Invalid or expired email verification token"));
     }
 
     @Test
@@ -250,6 +340,23 @@ class AuthControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationJson(username, email)))
                 .andExpect(status().isCreated());
+    }
+
+    private String verificationTokenSentTo(String email) {
+        ArgumentCaptor<String> verificationUrlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(notificationClient).sendVerificationEmail(eq(email), verificationUrlCaptor.capture());
+        return tokenFromUrl(verificationUrlCaptor.getValue());
+    }
+
+    private static String tokenFromUrl(String verificationUrl) {
+        String query = URI.create(verificationUrl).getRawQuery();
+        return java.util.Arrays.stream(query.split("&"))
+                .filter(parameter -> parameter.startsWith("token="))
+                .map(parameter -> URLDecoder.decode(
+                        parameter.substring("token=".length()),
+                        StandardCharsets.UTF_8))
+                .findFirst()
+                .orElseThrow();
     }
 
     private void createVerifiedProfile(String username, String email, String password) {

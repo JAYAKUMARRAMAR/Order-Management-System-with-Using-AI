@@ -1,6 +1,7 @@
 package com.jayakumar.notification.service;
 
 import com.jayakumar.notification.dto.CreateNotificationRequest;
+import com.jayakumar.notification.dto.EmailVerificationRequest;
 import com.jayakumar.notification.dto.NotificationResponse;
 import com.jayakumar.notification.entity.DeliveryStatus;
 import com.jayakumar.notification.entity.Notification;
@@ -67,6 +68,11 @@ public class NotificationServiceImpl implements NotificationService {
         }
         notification.setUpdatedAt(LocalDateTime.now());
         return toResponse(notificationRepository.save(notification));
+    }
+
+    @Override
+    public void sendEmailVerification(EmailVerificationRequest request) {
+        emailService.sendEmailVerification(request.recipientEmail(), request.verificationUrl());
     }
 
     @Override

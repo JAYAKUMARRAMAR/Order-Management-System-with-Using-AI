@@ -1,6 +1,7 @@
 package com.jayakumar.notification.controller;
 
 import com.jayakumar.notification.dto.CreateNotificationRequest;
+import com.jayakumar.notification.dto.EmailVerificationRequest;
 import com.jayakumar.notification.dto.NotificationResponse;
 import com.jayakumar.notification.service.NotificationService;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,6 +34,13 @@ public class NotificationController {
     public NotificationResponse createNotification(
             @Valid @RequestBody CreateNotificationRequest request) {
         return notificationService.createNotification(request);
+    }
+
+    @PostMapping("/email-verification")
+    public ResponseEntity<Void> sendEmailVerification(
+            @Valid @RequestBody EmailVerificationRequest request) {
+        notificationService.sendEmailVerification(request);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{notificationId}")

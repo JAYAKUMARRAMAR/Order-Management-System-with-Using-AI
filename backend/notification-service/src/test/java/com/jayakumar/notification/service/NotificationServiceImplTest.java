@@ -1,6 +1,7 @@
 package com.jayakumar.notification.service;
 
 import com.jayakumar.notification.dto.CreateNotificationRequest;
+import com.jayakumar.notification.dto.EmailVerificationRequest;
 import com.jayakumar.notification.dto.NotificationResponse;
 import com.jayakumar.notification.entity.DeliveryStatus;
 import com.jayakumar.notification.entity.Notification;
@@ -141,6 +142,19 @@ class NotificationServiceImplTest {
         assertThrows(
                 NotificationNotFoundException.class,
                 () -> notificationService.getNotificationById("missing"));
+    }
+
+    @Test
+    void sendEmailVerificationDelegatesToEmailService() {
+        EmailVerificationRequest request = new EmailVerificationRequest(
+                "customer@example.com",
+                "https://example.test/verify?token=abc");
+
+        notificationService.sendEmailVerification(request);
+
+        verify(emailService).sendEmailVerification(
+                "customer@example.com",
+                "https://example.test/verify?token=abc");
     }
 
     @Test
