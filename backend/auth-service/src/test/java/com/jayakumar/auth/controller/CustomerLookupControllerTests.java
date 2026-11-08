@@ -18,7 +18,9 @@ import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -88,6 +90,19 @@ class CustomerLookupControllerTests {
         mockMvc.perform(get("/internal/customers/1")
                         .header("Authorization", "Bearer wrong-secret"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void allowsAuthorizationHeaderInCorsPreflight() throws Exception {
+        mockMvc.perform(options("/internal/customers/1")
+                        .header("Origin", "http://localhost:4200")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", "authorization,content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(
+                        "Access-Control-Allow-Headers",
+                        org.hamcrest.Matchers.containsStringIgnoringCase("authorization")))
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"));
     }
 
     @Test

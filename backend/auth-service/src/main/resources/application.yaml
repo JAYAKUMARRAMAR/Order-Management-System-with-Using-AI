@@ -25,6 +25,8 @@ notification:
     url: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
 
 auth:
+  cors:
+    allowed-origin: ${AUTH_CORS_ALLOWED_ORIGIN:http://localhost:4200}
   email-verification:
     url: ${EMAIL_VERIFICATION_URL:http://localhost:8090/auth/verify-email}
     expiration: ${EMAIL_VERIFICATION_EXPIRATION:86400000}
