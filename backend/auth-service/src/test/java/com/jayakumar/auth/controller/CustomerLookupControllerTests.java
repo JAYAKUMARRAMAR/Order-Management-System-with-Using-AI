@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +35,9 @@ class CustomerLookupControllerTests {
     @Autowired
     private CustomerProfileRepository customerProfileRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @MockitoBean
     private EmailVerificationNotificationClient notificationClient;
 
@@ -43,8 +47,8 @@ class CustomerLookupControllerTests {
     }
 
     @Test
-    void returnsApprovedCustomerFieldsForExistingCustomer() throws Exception {
-        CustomerProfile profile = createProfile();
+    void returnsVerifiedCustomerFieldsForExistingCustomer() throws Exception {
+        CustomerProfile profile = createVerifiedProfile();
 
         mockMvc.perform(get("/internal/customers/{customerId}", profile.getCustomerId())
                         .header("Authorization", "Bearer " + INTERNAL_TOKEN))
@@ -53,10 +57,20 @@ class CustomerLookupControllerTests {
                 .andExpect(jsonPath("$.customerId").value(profile.getCustomerId()))
                 .andExpect(jsonPath("$.username").value("lookup-customer"))
                 .andExpect(jsonPath("$.email").value("lookup@example.test"))
-                .andExpect(jsonPath("$.emailVerified").value(false))
+                .andExpect(jsonPath("$.emailVerified").value(true))
                 .andExpect(jsonPath("$.*", containsInAnyOrder(
                         profile.getCustomerId().intValue(), "lookup-customer",
-                        "lookup@example.test", false)));
+                        "lookup@example.test", true)));
+    }
+
+    @Test
+    void rejectsUnverifiedCustomerWithoutReturningEmail() throws Exception {
+        CustomerProfile profile = createProfile();
+
+        mockMvc.perform(get("/internal/customers/{customerId}", profile.getCustomerId())
+                        .header("Authorization", "Bearer " + INTERNAL_TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(""));
     }
 
     @Test
@@ -78,7 +92,7 @@ class CustomerLookupControllerTests {
 
     @Test
     void neverExposesPasswordHashOrVerificationTokenData() throws Exception {
-        CustomerProfile profile = createProfile();
+        CustomerProfile profile = createVerifiedProfile();
         String response = mockMvc.perform(get(
                                 "/internal/customers/{customerId}", profile.getCustomerId())
                         .header("Authorization", "Bearer " + INTERNAL_TOKEN))
@@ -111,5 +125,13 @@ class CustomerLookupControllerTests {
                 "stored-verification-token-hash",
                 LocalDateTime.now().plusHours(1));
         return customerProfileRepository.saveAndFlush(profile);
+    }
+
+    private CustomerProfile createVerifiedProfile() {
+        CustomerProfile profile = createProfile();
+        jdbcTemplate.update(
+                "UPDATE customer_profiles SET email_verified = TRUE WHERE customer_id = ?",
+                profile.getCustomerId());
+        return profile;
     }
 }

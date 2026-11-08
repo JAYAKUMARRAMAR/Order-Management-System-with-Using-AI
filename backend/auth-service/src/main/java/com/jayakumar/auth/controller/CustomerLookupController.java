@@ -3,6 +3,7 @@ package com.jayakumar.auth.controller;
 import com.jayakumar.auth.dto.CustomerLookupResponse;
 import com.jayakumar.auth.repository.CustomerProfileRepository;
 import jakarta.validation.constraints.Positive;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,9 +25,17 @@ public class CustomerLookupController {
     @GetMapping("/{customerId}")
     public ResponseEntity<CustomerLookupResponse> getCustomer(
             @PathVariable @Positive Long customerId) {
-        return customerProfileRepository.findById(customerId)
-                .map(CustomerLookupResponse::from)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        var profile = customerProfileRepository.findById(customerId);
+        if (profile.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var customer = profile.get();
+        if (!customer.isEmailVerified()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .<CustomerLookupResponse>build();
+        }
+
+        return ResponseEntity.ok(CustomerLookupResponse.from(customer));
     }
 }
